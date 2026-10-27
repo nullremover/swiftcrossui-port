@@ -1,0 +1,41 @@
+
+name: Build Mish for Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Swift
+        run: winget install --id Swift.Toolchain -e --source winget --accept-source-agreements --accept-package-agreements
+
+      - name: Find Swift
+        shell: pwsh
+        run: |
+          $swift = Get-Command swift -ErrorAction SilentlyContinue
+          if (-not $swift) {
+            Write-Error "Swift was installed but is not on PATH. Configure the Swift toolchain path for this runner."
+            exit 1
+          }
+          swift --version
+
+      - name: Resolve dependencies
+        run: swift package resolve
+
+      - name: Build release
+        run: swift build -c release
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mish-Windows
+          path: .build/x86_64-unknown-windows-msvc/release/*.exe
+          if-no-files-found: error
